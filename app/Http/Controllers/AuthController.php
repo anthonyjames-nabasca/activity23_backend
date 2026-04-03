@@ -194,7 +194,7 @@ class AuthController extends Controller
 
             if ($user) {
                 $user->reset_token = Str::random(64);
-                $user->reset_token_expires = now()->addHour();
+                $user->reset_token_expires = now()->addHours(24);
                 $user->save();
 
                 Mail::to($user->email)->send(new ResetPasswordMail($user));

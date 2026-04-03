@@ -3,8 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Models\AccountItem;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
 
 class ProfileController extends Controller
 {
@@ -20,17 +22,24 @@ class ProfileController extends Controller
                 'is_verified',
                 'created_at',
                 'updated_at'
-            )->where('user_id', $req->user()->user_id)->first();
+            )
+            ->where('user_id', $req->user()->user_id)
+            ->first();
 
             if (!$user) {
                 return response()->json([
-                    'message' => 'Profile not found.'
+                    'message' => 'User not found.'
                 ], 404);
             }
 
             $user->profile_image = $this->publicFileUrl($req, $user->profile_image);
 
-            return response()->json($user, 200);
+            $accountCount = AccountItem::where('user_id', $user->user_id)->count();
+
+            return response()->json([
+                'user' => $user,
+                'account_count' => $accountCount
+            ], 200);
         } catch (\Throwable $error) {
             return response()->json([
                 'message' => 'Failed to fetch profile.',
@@ -42,56 +51,72 @@ class ProfileController extends Controller
     public function update(Request $req)
     {
         try {
-            $currentUser = User::where('user_id', $req->user()->user_id)->first();
+            $user = User::where('user_id', $req->user()->user_id)->first();
 
-            if (!$currentUser) {
+            if (!$user) {
                 return response()->json([
                     'message' => 'User not found.'
                 ], 404);
             }
 
-            $username = $req->username ?: $currentUser->username;
-            $fullname = $req->fullname ?: $currentUser->fullname;
-            $email = $req->email ?: $currentUser->email;
+            $username = $req->username ?: $user->username;
+            $fullname = $req->fullname ?: $user->fullname;
+            $email = $req->email ?: $user->email;
 
-            $duplicate = User::where(function ($q) use ($username, $email) {
-                    $q->where('username', $username)->orWhere('email', $email);
-                })
-                ->where('user_id', '<>', $req->user()->user_id)
+            $usernameExists = User::where('username', $username)
+                ->where('user_id', '!=', $user->user_id)
                 ->exists();
 
-            if ($duplicate) {
+            if ($usernameExists) {
                 return response()->json([
-                    'message' => 'Username or email is already in use.'
+                    'message' => 'Username is already taken.'
                 ], 409);
             }
 
-            $currentUser->username = $username;
-            $currentUser->fullname = $fullname;
-            $currentUser->email = $email;
+            $emailExists = User::where('email', $email)
+                ->where('user_id', '!=', $user->user_id)
+                ->exists();
 
-            if ($req->password && trim($req->password) !== '') {
-                $currentUser->password = Hash::make($req->password);
+            if ($emailExists) {
+                return response()->json([
+                    'message' => 'Email is already taken.'
+                ], 409);
             }
 
-            $currentUser->save();
+            $user->username = $username;
+            $user->fullname = $fullname;
+            $user->email = $email;
 
-            $updatedUser = User::select(
-                'user_id',
-                'username',
-                'fullname',
-                'email',
-                'profile_image',
-                'is_verified',
-                'created_at',
-                'updated_at'
-            )->where('user_id', $req->user()->user_id)->first();
+            if ($req->password) {
+                $user->password = Hash::make($req->password);
+            }
 
-            $updatedUser->profile_image = $this->publicFileUrl($req, $updatedUser->profile_image);
+            if ($req->hasFile('profile_image')) {
+                if ($user->profile_image) {
+                    $oldPath = str_replace('/storage/', '', $user->profile_image);
+                    Storage::disk('public')->delete($oldPath);
+                }
+
+                $storedPath = $req->file('profile_image')->store('uploads/profile', 'public');
+                $user->profile_image = '/storage/' . $storedPath;
+            }
+
+            $user->save();
+
+            $user->profile_image = $this->publicFileUrl($req, $user->profile_image);
+            $accountCount = AccountItem::where('user_id', $user->user_id)->count();
 
             return response()->json([
                 'message' => 'Profile updated successfully.',
-                'user' => $updatedUser
+                'user' => [
+                    'user_id' => $user->user_id,
+                    'username' => $user->username,
+                    'fullname' => $user->fullname,
+                    'email' => $user->email,
+                    'profile_image' => $user->profile_image,
+                    'is_verified' => $user->is_verified,
+                ],
+                'account_count' => $accountCount
             ], 200);
         } catch (\Throwable $error) {
             return response()->json([

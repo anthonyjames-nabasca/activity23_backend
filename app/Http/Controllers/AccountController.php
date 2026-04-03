@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\AccountItem;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 
 class AccountController extends Controller
 {
@@ -31,12 +32,19 @@ class AccountController extends Controller
                 ], 409);
             }
 
+            $imagePath = null;
+
+            if ($req->hasFile('account_image')) {
+                $storedPath = $req->file('account_image')->store('uploads/account', 'public');
+                $imagePath = '/storage/' . $storedPath;
+            }
+
             $item = AccountItem::create([
                 'user_id' => $req->user()->user_id,
                 'site' => $site,
                 'account_username' => $accountUsername,
                 'account_password' => $accountPassword,
-                'account_image' => null,
+                'account_image' => $imagePath,
             ]);
 
             return response()->json([
@@ -115,17 +123,9 @@ class AccountController extends Controller
         }
     }
 
-    public function update(Request $req)
+    public function update(Request $req, $id)
     {
         try {
-            $id = $req->id;
-
-            if (!$id) {
-                return response()->json([
-                    'message' => 'id is required.'
-                ], 400);
-            }
-
             $item = AccountItem::where('account_id', $id)
                 ->where('user_id', $req->user()->user_id)
                 ->first();
@@ -136,9 +136,36 @@ class AccountController extends Controller
                 ], 404);
             }
 
-            $item->site = $req->site ?: $item->site;
-            $item->account_username = ($req->account_username ?: $req->username) ?: $item->account_username;
-            $item->account_password = ($req->account_password ?: $req->password) ?: $item->account_password;
+            $site = $req->site ?: $item->site;
+            $accountUsername = ($req->account_username ?: $req->username) ?: $item->account_username;
+            $accountPassword = ($req->account_password ?: $req->password) ?: $item->account_password;
+
+            $duplicate = AccountItem::where('user_id', $req->user()->user_id)
+                ->where('site', $site)
+                ->where('account_username', $accountUsername)
+                ->where('account_id', '!=', $id)
+                ->exists();
+
+            if ($duplicate) {
+                return response()->json([
+                    'message' => 'This account item already exists for this user.'
+                ], 409);
+            }
+
+            $item->site = $site;
+            $item->account_username = $accountUsername;
+            $item->account_password = $accountPassword;
+
+            if ($req->hasFile('account_image')) {
+                if ($item->account_image) {
+                    $oldPath = str_replace('/storage/', '', $item->account_image);
+                    Storage::disk('public')->delete($oldPath);
+                }
+
+                $storedPath = $req->file('account_image')->store('uploads/account', 'public');
+                $item->account_image = '/storage/' . $storedPath;
+            }
+
             $item->save();
 
             return response()->json([
@@ -152,17 +179,9 @@ class AccountController extends Controller
         }
     }
 
-    public function destroy(Request $req)
+    public function destroy(Request $req, $id)
     {
         try {
-            $id = $req->id;
-
-            if (!$id) {
-                return response()->json([
-                    'message' => 'id is required.'
-                ], 400);
-            }
-
             $item = AccountItem::where('account_id', $id)
                 ->where('user_id', $req->user()->user_id)
                 ->first();
@@ -171,6 +190,11 @@ class AccountController extends Controller
                 return response()->json([
                     'message' => 'Account item not found.'
                 ], 404);
+            }
+
+            if ($item->account_image) {
+                $oldPath = str_replace('/storage/', '', $item->account_image);
+                Storage::disk('public')->delete($oldPath);
             }
 
             $item->delete();

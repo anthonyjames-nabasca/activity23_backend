@@ -20,6 +20,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/account', [AccountController::class, 'store']);
     Route::get('/account', [AccountController::class, 'index']);
     Route::get('/account/{id}', [AccountController::class, 'show']);
-    Route::put('/account', [AccountController::class, 'update']);
-    Route::delete('/account', [AccountController::class, 'destroy']);
+    Route::put('/account/{id}', [AccountController::class, 'update']);
+    Route::delete('/account/{id}', [AccountController::class, 'destroy']);
 });

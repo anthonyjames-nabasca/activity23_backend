@@ -8,7 +8,6 @@ class AccountItem extends Model
 {
     protected $table = 'account_items';
     protected $primaryKey = 'account_id';
-    public $timestamps = true;
 
     protected $fillable = [
         'user_id',
@@ -17,4 +16,9 @@ class AccountItem extends Model
         'account_password',
         'account_image',
     ];
+
+    public function user()
+    {
+        return $this->belongsTo(User::class, 'user_id', 'user_id');
+    }
 }
