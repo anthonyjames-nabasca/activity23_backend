@@ -114,7 +114,7 @@ Update your `.env` file with your local configuration.
 ### Example `.env`
 
 ```env
-APP_NAME="Account22API"
+APP_NAME="Account23API"
 APP_ENV=local
 APP_KEY=base64:+KUCiIWWLqalYWRB2H2UUq6JTwI+y65SpwDy+qZT3nw=
 APP_DEBUG=true
