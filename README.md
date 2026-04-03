@@ -7,14 +7,14 @@
 <h1 align="center">Account22API</h1>
 
 <p align="center">
-  Laravel 12 REST API for Activity 22
+  Laravel 12 REST API for Activity 23
 </p>
 
 ---
 
 ## About the Project
 
-**Account22API** is a Laravel-based backend API developed for **Activity 22**.  
+**Account22API** is a Laravel-based backend API developed for **Activity 23**.  
 It provides user account management features such as:
 
 - User registration
@@ -329,7 +329,7 @@ Make sure these are ignored:
 
 ## Developer
 
-Developed for **Activity 22** using **Laravel 12** and **MySQL**.
+Developed for **Activity 23** using **Laravel 12** and **MySQL**.
 
 ---
 
